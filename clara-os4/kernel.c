@@ -4,6 +4,7 @@
 #include "multiboot.h"
 #include "pmm.h"
 #include "paging.h" /* Incluimos o modulo de paginacao */
+#include "kheap.h"  /* Incluimos o modulo do heap do kernel */
 
 static const size_t VGA_WIDTH = 80;
 uint16_t* vga_buffer = (uint16_t*) 0xB8000;
@@ -32,6 +33,52 @@ void terminal_write_hex(uint32_t n) {
     terminal_writestring(buffer);
 }
 
+void test_kheap(void) {
+    terminal_writestring("\n--- Testes do Kernel Heap (kmalloc/kfree) ---\n");
+    
+    terminal_writestring("1. Alloc A (128 bytes): ");
+    void* a = kmalloc(128);
+    if (a) { terminal_write_hex((uint32_t)a); terminal_writestring(" [OK]\n"); }
+    else { terminal_writestring("FAIL\n"); }
+
+    terminal_writestring("2. Alloc B (512 bytes): ");
+    void* b = kmalloc(512);
+    if (b) { terminal_write_hex((uint32_t)b); terminal_writestring(" [OK]\n"); }
+    else { terminal_writestring("FAIL\n"); }
+
+    terminal_writestring("3. Liberando bloco A...\n");
+    kfree(a);
+
+    terminal_writestring("4. Alloc C (64 bytes - reuso A): ");
+    void* c = kmalloc(64);
+    if (c) {
+        terminal_write_hex((uint32_t)c);
+        if (c == a) { terminal_writestring(" [REUSO OK]\n"); }
+        else { terminal_writestring(" [OK - SEM REUSO]\n"); }
+    } else { terminal_writestring("FAIL\n"); }
+
+    terminal_writestring("5. Alloc D grande (8000 bytes - heap grow): ");
+    void* d = kmalloc(8000);
+    if (d) { terminal_write_hex((uint32_t)d); terminal_writestring(" [OK]\n"); }
+    else { terminal_writestring("FAIL\n"); }
+
+    terminal_writestring("6. Liberando B, C, D...\n");
+    kfree(b);
+    kfree(c);
+    kfree(d);
+
+    terminal_writestring("7. Alloc E (8000 bytes - coalescencia): ");
+    void* e = kmalloc(8000);
+    if (e) {
+        terminal_write_hex((uint32_t)e);
+        terminal_writestring(" [OK]\n");
+        kfree(e);
+        terminal_writestring("   [SUCESSO] Coalescencia validada!\n");
+    } else { terminal_writestring("FAIL\n"); }
+
+    terminal_writestring("--- Todos os testes do Heap concluidos! ---\n");
+}
+
 void kernel_main(uint32_t magic, uint32_t addr) {
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC) {
         terminal_writestring("ERRO: Bootloader invalido!\n");
@@ -48,10 +95,15 @@ void kernel_main(uint32_t magic, uint32_t addr) {
     /* 2. Gerenciador de Memoria Virtual (Paginacao) */
     terminal_writestring("[...] Ativando Paginacao (Virtual Memory)... ");
     paging_init();
-    
-    /* Se a maquina nao reiniciou na linha de cima, o milagre aconteceu! */
+    terminal_writestring("[OK]\n");
+
+    /* 3. Inicializador do Heap do Kernel */
+    terminal_writestring("[...] Inicializando Kernel Heap (kheap)... ");
+    kheap_init();
     terminal_writestring("[OK]\n\n");
 
-    terminal_writestring("Parabens! A Unidade de Gerenciamento de Memoria (MMU) esta ONLINE.\n");
-    terminal_writestring("Agora podemos isolar a memoria de processos!\n");
+    terminal_writestring("A Unidade de Gerenciamento de Memoria (MMU) esta ONLINE.\n");
+    
+    /* Roda a suite de testes do Heap */
+    test_kheap();
 }

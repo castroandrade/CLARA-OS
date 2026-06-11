@@ -1,0 +1,30 @@
+# Objetos de Compilação
+*.o
+*.bin
+*.elf
+*.o.d
+
+# Arquivos de Imagem de Disco / Emulador
+*.img
+*.iso
+
+# IDEs e Editores
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*~
+
+# Arquivos temporários e de log do sistema
+.DS_Store
+Thumbs.db
+*.log
+docker-build-temp/
+
+# Arquivos de backup do Office
+~$*.docx
+~$*.xlsx
+~$*.pptx
